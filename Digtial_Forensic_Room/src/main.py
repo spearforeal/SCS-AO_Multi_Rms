@@ -28,14 +28,9 @@ display02 = LGDisplayModule.SerialOverEthernetClass('192.168.1.12', 2004, 'TCP',
 display01_ch = GetConnectionHandler(display01, keepAliveQuery='Power', DisconnectLimit=15, pollFrequency=5)
 display02_ch = GetConnectionHandler(display02, keepAliveQuery='Power', DisconnectLimit=15, pollFrequency=5)
 
-def disp01PowerHandler(command, value, qualifier):
-    print(command)
-    print(value)
-    print(qualifier)
     
     
 
-display01_ch.SubscribeStatus('Power', None, disp01PowerHandler)
 # Project imports
 import variables as v
 import devices
@@ -50,12 +45,35 @@ startBtn = Button(panel, v.StartID)
 shutdownBtn = Button(panel, v.ShutdownID)
 shutdownConfirmBtn = Button(panel, v.ShutdownConfirmID)
 shutdownCancelBtn = Button(panel, v.ShutdownCancelID)
+disp1PowerOnBtn = Button(panel, v.Disp1PowerOnID)
+disp1PowerOffBtn = Button(panel, v.Disp1PowerOffID)
+disp2PowerOnBtn = Button(panel, v.Disp2PowerOnID)
+disp2PowerOffBtn = Button(panel, v.Disp2PowerOffID)
 
+def disp01PowerHandler(command, value, qualifier):
+    if value == 'On':
+        disp1PowerOnBtn.SetState(1)
+        disp1PowerOffBtn.SetState(0)
+    else:
+        disp1PowerOnBtn.SetState(0)
+        disp1PowerOffBtn.SetState(1)
 
+def disp02PowerHandler(command, value, qualifier):
+    if value == 'On':
+        disp2PowerOnBtn.SetState(1)
+        disp2PowerOffBtn.SetState(0)
+    else:
+        disp2PowerOnBtn.SetState(0)
+        disp2PowerOffBtn.SetState(1)
+
+display01_ch.SubscribeStatus('Power', None, disp01PowerHandler)
+display02_ch.SubscribeStatus('Power', None, disp02PowerHandler)
 def initialize():
     switcher01_ch.Connect()
     display01_ch.Connect()
     display02_ch.Connect()
+    display01_ch.Update('Power')
+    display02_ch.Update('Power')
     panel.ShowPage(v.PageStart)
     panel.HideAllPopups()
 
@@ -66,6 +84,8 @@ def startup():
     panel.ShowPopup(v.PopupRouting)
     display01.Set('Power', 'On')
     display02.Set('Power', 'On')
+    display01_ch.Update('Power')
+    display02_ch.Update('Power')
 
 def shutdown():
     panel.ShowPopup(v.PopupPoweringDown)
@@ -73,6 +93,8 @@ def shutdown():
     #Clear routes
     display01.Set('Power', 'Off')
     display02.Set('Power', 'Off')
+    display01_ch.Update('Power')
+    display02_ch.Update('Power')
     panel.ShowPage(v.PageStart)
     
 @event(startBtn, 'Pressed')
@@ -97,6 +119,25 @@ def shutdownCancelBtnPressed(button, state):
         panel.HidePopup(v.PopupShutdown)
         panel.ShowPopup(v.PopupRouting)
         shutdownBtn.SetState(0)
+
+@event(disp1PowerOnBtn, 'Pressed')
+def disp1PowerOnBtnPressed(button, state):
+    display01.Set('Power', 'On')
+    display01.Update('Power')
+
+@event(disp1PowerOffBtn, 'Pressed')
+def disp1PowerOffBtnPressed(button, state):
+    display01.Set('Power', 'Off')
+    display01.Update('Power')
     
+@event(disp2PowerOnBtn, 'Pressed')
+def disp2PowerOnBtnPressed(button, state):
+    display02.Set('Power', 'On')
+    display02.Update('Power')
+
+@event(disp2PowerOffBtn, 'Pressed')
+def disp2PowerOffBtnPressed(button, state):
+    display02.Set('Power', 'Off')
+    display02.Update('Power')
 
 initialize()
