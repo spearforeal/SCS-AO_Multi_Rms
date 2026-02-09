@@ -9,6 +9,7 @@ The main program entrance file.  The contents of this should be:
 
 # Extron Library Imports
 from extronlib import Platform, Version, event
+from extronlib.system import MESet
 from extronlib.device import ProcessorDevice, UIDevice
 from extronlib.ui import *
 import modules.device.extr_matrix_DTP_CrossPoint_82_84_4kSeriesv1872 as SwitcherModule
@@ -49,6 +50,33 @@ disp1PowerOnBtn = Button(panel, v.Disp1PowerOnID)
 disp1PowerOffBtn = Button(panel, v.Disp1PowerOffID)
 disp2PowerOnBtn = Button(panel, v.Disp2PowerOnID)
 disp2PowerOffBtn = Button(panel, v.Disp2PowerOffID)
+Src1Btn = Button(panel, v.Src1BtnID)
+Src2Btn = Button(panel, v.Src2BtnID)
+Src3Btn = Button(panel, v.Src3BtnID)
+Src4Btn = Button(panel, v.Src4BtnID)
+Src5Btn = Button(panel, v.Src5BtnID)
+Src6Btn = Button(panel, v.Src6BtnID)
+ClearBtn = Button(panel, v.ClearBtnID)
+Dest1Btn = Button(panel, v.Dest1BtnID)
+Dest2Btn = Button(panel, v.Dest2BtnID)
+currentSource = 0
+
+src_btns_dict = {
+    Src1Btn:1,
+    Src2Btn:2, 
+    Src3Btn:3,
+    Src4Btn:4,
+    Src5Btn:5,
+    Src6Btn:6,
+    ClearBtn:0 
+}
+dest_btns_dict = {
+    Dest1Btn: 3,
+    Dest2Btn: 4,
+}
+swSrcGroup = MESet(list(src_btns_dict.keys()))
+swDestGroup = MESet(list(dest_btns_dict.keys()))
+
 
 def disp01PowerHandler(command, value, qualifier):
     if value == 'On':
@@ -72,8 +100,8 @@ def initialize():
     switcher01_ch.Connect()
     display01_ch.Connect()
     display02_ch.Connect()
-    display01_ch.Update('Power')
-    display02_ch.Update('Power')
+    display01.Update('Power')
+    display02.Update('Power')
     panel.ShowPage(v.PageStart)
     panel.HideAllPopups()
 
@@ -84,8 +112,8 @@ def startup():
     panel.ShowPopup(v.PopupRouting)
     display01.Set('Power', 'On')
     display02.Set('Power', 'On')
-    display01_ch.Update('Power')
-    display02_ch.Update('Power')
+    display01.Update('Power')
+    display02.Update('Power')
 
 def shutdown():
     panel.ShowPopup(v.PopupPoweringDown)
@@ -93,8 +121,8 @@ def shutdown():
     #Clear routes
     display01.Set('Power', 'Off')
     display02.Set('Power', 'Off')
-    display01_ch.Update('Power')
-    display02_ch.Update('Power')
+    display01.Update('Power')
+    display02.Update('Power')
     panel.ShowPage(v.PageStart)
     
 @event(startBtn, 'Pressed')
@@ -139,5 +167,28 @@ def disp2PowerOnBtnPressed(button, state):
 def disp2PowerOffBtnPressed(button, state):
     display02.Set('Power', 'Off')
     display02.Update('Power')
+
+@event(swSrcGroup.Objects, 'Pressed')
+def onSrcPressed(button, state):
+    global currentSource
+    swSrcGroup.SetCurrent(button)
+    currentSource = src_btns_dict[button]
+
+
+@event(swDestGroup.Objects, 'Pressed')
+def onDestPressed(button, state):
+    out_num = dest_btns_dict[button]
+    global currentSource
+    in_num = currentSource
+    switcher01.Set('MatrixTieCommand', None,{
+        'Input': str(in_num),
+        'Output': str(out_num),
+        'Tie Type': 'Audio/Video'
+    })
+    switcher01.Set('RefreshMatrix', None)
+    
+
+    
+
 
 initialize()
