@@ -29,7 +29,43 @@ display02 = LGDisplayModule.SerialOverEthernetClass('192.168.1.12', 2004, 'TCP',
 display01_ch = GetConnectionHandler(display01, keepAliveQuery='Power', DisconnectLimit=15, pollFrequency=5)
 display02_ch = GetConnectionHandler(display02, keepAliveQuery='Power', DisconnectLimit=15, pollFrequency=5)
 
+
+class Router:
+    def __init__(self, switcher):
+        self.switcher = switcher
+        self.current_source = 0
+        print('Router initialized')
     
+    def set_source(self, src):
+        self.current_source = src
+        print('Source selected: {}'.format(src))
+
+    def route_to(self, out_num, src=None, tie_type='Audio/Video', refresh=True):
+        if src is not None:
+            self.current_source = src
+            print('Source overridden to {}'.format(src))
+        print('Routing Input {} → Output {} ({})'.format(
+            self.current_source, out_num, tie_type
+        ))
+        self.switcher.Set('MatrixTieCommand', None, {
+            'Input': str(self.current_source),
+            'Output': str(out_num),
+            'Tie Type': tie_type
+        })
+        if refresh:
+            print('Refreshing matrix')
+            self.switcher.Set('RefreshMatrix', None)
+        
+    def clear_to(self, out_num, tie_type='Audio/Video', refresh=True):
+        print('Clearing Output {}'.format(out_num))
+        self.switcher.Set('MatrixTieCommand', None, {
+            'Input': '0',
+            'Output': str(out_num),
+            'Tie Type': tie_type
+        })
+        if refresh:
+            print('Refreshing matrix')
+            self.switcher.Set('RefreshMatrix', None)
     
 
 # Project imports
@@ -59,7 +95,7 @@ Src6Btn = Button(panel, v.Src6BtnID)
 ClearBtn = Button(panel, v.ClearBtnID)
 Dest1Btn = Button(panel, v.Dest1BtnID)
 Dest2Btn = Button(panel, v.Dest2BtnID)
-currentSource = 0
+router = Router(switcher01)
 
 src_btns_dict = {
     Src1Btn:1,
@@ -79,6 +115,7 @@ swDestGroup = MESet(list(dest_btns_dict.keys()))
 
 
 def disp01PowerHandler(command, value, qualifier):
+    print('Display 1 power feedback: {}'.format(value))
     if value == 'On':
         disp1PowerOnBtn.SetState(1)
         disp1PowerOffBtn.SetState(0)
@@ -87,6 +124,7 @@ def disp01PowerHandler(command, value, qualifier):
         disp1PowerOffBtn.SetState(1)
 
 def disp02PowerHandler(command, value, qualifier):
+    print('Display 2 power feedback: {}'.format(value))
     if value == 'On':
         disp2PowerOnBtn.SetState(1)
         disp2PowerOffBtn.SetState(0)
@@ -105,26 +143,42 @@ def initialize():
     panel.ShowPage(v.PageStart)
     panel.HideAllPopups()
 
+
 def startup():
+    print('Startup sequence start')
     panel.ShowPopup(v.PopupStartingUp, v.WaitDuration)
     panel.HideAllPopups()
     panel.ShowPage(v.PageMain)
     panel.ShowPopup(v.PopupRouting)
+    print('Power displays On')
     display01.Set('Power', 'On')
     display02.Set('Power', 'On')
     display01.Update('Power')
     display02.Update('Power')
+    print('Applying default routing')
+    router.set_source(v.DefaultInput)
+    router.route_to(3, refresh=False)
+    router.route_to(4, refresh=True)
+    print('Applying default routes')
+
+
 
 def shutdown():
+    print('Shutdown sequence begin')
     panel.ShowPopup(v.PopupPoweringDown)
     panel.HideAllPopups()
-    #Clear routes
+    print('Power displays off')
     display01.Set('Power', 'Off')
     display02.Set('Power', 'Off')
     display01.Update('Power')
     display02.Update('Power')
     panel.ShowPage(v.PageStart)
-    
+    print('Clearing matrix routes')
+    router.clear_to(3, refresh=False) 
+    router.clear_to(4, refresh=True) 
+    print('Shutdown sequence complete')
+
+
 @event(startBtn, 'Pressed')
 def startBtnPressed(button, state):
     startup()
@@ -170,24 +224,19 @@ def disp2PowerOffBtnPressed(button, state):
 
 @event(swSrcGroup.Objects, 'Pressed')
 def onSrcPressed(button, state):
-    global currentSource
+    src = src_btns_dict[button]
+    print('Source button pressed → {}'.format(src))
     swSrcGroup.SetCurrent(button)
-    currentSource = src_btns_dict[button]
+    router.set_source(src)
+
 
 
 @event(swDestGroup.Objects, 'Pressed')
 def onDestPressed(button, state):
     out_num = dest_btns_dict[button]
-    global currentSource
-    in_num = currentSource
-    switcher01.Set('MatrixTieCommand', None,{
-        'Input': str(in_num),
-        'Output': str(out_num),
-        'Tie Type': 'Audio/Video'
-    })
-    switcher01.Set('RefreshMatrix', None)
-    
-
+    print('Destination button pressed → Output {}'.format(out_num))
+    swDestGroup.SetCurrent(button)
+    router.route_to(out_num, refresh=True)
     
 
 

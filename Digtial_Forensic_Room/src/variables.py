@@ -21,6 +21,8 @@ ClearBtnID = 8
 Dest1BtnID = 9
 Dest2BtnID = 10
 
+DefaultInput = 1
+
 PageStart = 'Start'
 PageMain = 'Main'
 PopupStartingUp = 'Starting Up'
